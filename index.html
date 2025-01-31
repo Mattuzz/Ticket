@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionario Ticket</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        body { padding: 20px; background-color: navy; font-family: Arial, sans-serif; }
+        #app { display: none; }
+        .container { max-width: 100%; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1); }
+        th { cursor: pointer; }
+        .logo { display: block; margin: 0 auto 20px; max-width: 150px; }
+        .footer { text-align: center; margin-top: 20px; font-size: 14px; color: #666; }
+        .alert { display: none; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div id="login" class="container text-center">
+        <img src="logo.png" alt="Logo" class="logo">
+        <h2>Registrazione</h2>
+        <input type="text" id="username" class="form-control" placeholder="Nome utente" required>
+        <input type="password" id="password" class="form-control mt-2" placeholder="Password" required>
+        <button class="btn btn-primary mt-2" onclick="startApp()">Accedi</button>
+    </div>
+    
+    <div id="app" class="container">
+        <img src="logo.png" alt="Logo" class="logo">
+        <h2 class="text-center">Gestionario Ticket</h2>
+        <input type="text" id="searchInput" class="form-control mb-3" placeholder="Cerca ticket..." onkeyup="searchTicket()">
+        
+        <div class="mb-3">
+            <input type="text" id="ticketId" class="form-control" placeholder="ID">
+            <input type="date" id="ticketDate" class="form-control mt-2">
+            <select id="ticketStatus" class="form-control mt-2">
+                <option value="In corso">In corso</option>
+                <option value="Eseguito">Eseguito</option>
+            </select>
+            <input type="text" id="ticketDescription" class="form-control mt-2" placeholder="Descrizione">
+            <button class="btn btn-success mt-2" onclick="addTicket()">Aggiungi Ticket</button>
+        </div>
+
+        <div class="alert alert-danger" id="errorAlert">
+            Tutti i campi devono essere compilati.
+        </div>
+        
+        <table class="table table-bordered mt-3">
+            <thead>
+                <tr>
+                    <th onclick="sortTable(0)">ID ⬍</th>
+                    <th onclick="sortTable(1)">Data ⬍</th>
+                    <th onclick="sortTable(2)">Stato ⬍</th>
+                    <th onclick="sortTable(3)">Descrizione ⬍</th>
+                    <th>Azioni</th>
+                </tr>
+            </thead>
+            <tbody id="ticketList"></tbody>
+        </table>
+        
+        <button class="btn btn-info" onclick="showExportOptions()">Esporta</button>
+        <button class="btn btn-warning" onclick="deleteAllTickets()">Cancella Tutti i Ticket</button>
+
+        <div id="exportOptions" style="display: none; margin-top: 10px;">
+            <label><input type="checkbox" id="exportId" checked> ID</label>
+            <label><input type="checkbox" id="exportDate" checked> Data</label>
+            <label><input type="checkbox" id="exportStatus" checked> Stato</label>
+            <label><input type="checkbox" id="exportDescription" checked> Descrizione</label>
+            <button class="btn btn-primary btn-sm" onclick="exportCSV()">Esporta CSV</button>
+            <button class="btn btn-danger btn-sm" onclick="exportPDF()">Esporta PDF</button>
+        </div>
+        
+        <div class="footer">
+            © 2025 Mattia Facchinetti
+        </div>
+    </div>
+    
+    <script>
+        function startApp() {
+            let username = document.getElementById("username").value;
+            let password = document.getElementById("password").value;
+            if (username.trim() !== "" && password.trim() !== "") {
+                document.getElementById("login").style.display = "none";
+                document.getElementById("app").style.display = "block";
+            } else {
+                alert("Inserisci nome utente e password validi!");
+            }
+        }
+
+        function addTicket() {
+            let id = document.getElementById("ticketId").value.trim();
+            let date = document.getElementById("ticketDate").value;
+            let status = document.getElementById("ticketStatus").value;
+            let description = document.getElementById("ticketDescription").value.trim();
+
+            if (id !== "" && date !== "" && description !== "") {
+                let row = `<tr><td>${id}</td><td>${date}</td><td>${status}</td><td>${description}</td>
+                            <td><button class='btn btn-warning btn-sm' onclick='editTicket(this)'>Modifica</button>
+                            <button class='btn btn-danger btn-sm' onclick='deleteTicket(this)'>Elimina</button></td></tr>`;
+                document.getElementById("ticketList").innerHTML += row;
+                document.getElementById("ticketId").value = "";
+                document.getElementById("ticketDate").value = "";
+                document.getElementById("ticketDescription").value = "";
+                document.getElementById("errorAlert").style.display = "none"; // Hide error message if successful
+            } else {
+                document.getElementById("errorAlert").style.display = "block"; // Show error message
+            }
+        }
+
+        function showExportOptions() {
+            document.getElementById("exportOptions").style.display = "block";
+        }
+
+        function exportCSV() {
+            let rows = document.querySelectorAll("#ticketList tr");
+            let csv = "";
+            rows.forEach(row => {
+                let cols = row.querySelectorAll("td");
+                let selectedData = [];
+                if (document.getElementById("exportId").checked) selectedData.push(cols[0].innerText);
+                if (document.getElementById("exportDate").checked) selectedData.push(cols[1].innerText);
+                if (document.getElementById("exportStatus").checked) selectedData.push(cols[2].innerText);
+                if (document.getElementById("exportDescription").checked) selectedData.push(cols[3].innerText);
+                csv += selectedData.join(",") + "\n";
+            });
+            let blob = new Blob([csv], { type: "text/csv" });
+            saveAs(blob, "tickets.csv");
+        }
+
+        function exportPDF() {
+            let { jsPDF } = window.jspdf;
+            let doc = new jsPDF();
+            let y = 10;
+            document.querySelectorAll("#ticketList tr").forEach(row => {
+                let cols = row.querySelectorAll("td");
+                let line = "";
+                if (document.getElementById("exportId").checked) line += cols[0].innerText + " ";
+                if (document.getElementById("exportDate").checked) line += cols[1].innerText + " ";
+                if (document.getElementById("exportStatus").checked) line += cols[2].innerText + " ";
+                if (document.getElementById("exportDescription").checked) line += cols[3].innerText;
+                doc.text(10, y, line);
+                y += 10;
+            });
+            doc.save("tickets.pdf");
+        }
+    </script>
+</body>
+</html>
